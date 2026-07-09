@@ -55,6 +55,15 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
 </style>
 </head>
 <body>
+<div id="pw-gate" style="position:fixed;inset:0;z-index:9999;background:#10201D;display:flex;align-items:center;justify-content:center;font-family:'Noto Sans Georgian',sans-serif">
+  <div style="background:#fff;border-radius:14px;padding:32px 36px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="font-size:22px;font-weight:800;color:#10201D;margin-bottom:4px">CarSpace</div>
+    <div style="font-size:13px;color:#4A5C57;margin-bottom:20px">ინვოისების შემოწმება — შესვლა</div>
+    <input id="pw-input" type="password" placeholder="პაროლი" style="width:100%;padding:11px 14px;border:1px solid #DCE4E1;border-radius:9px;font-size:15px;text-align:center;font-family:inherit;box-sizing:border-box" autofocus>
+    <div id="pw-err" style="color:#C4372F;font-size:12px;height:16px;margin:8px 0"></div>
+    <button id="pw-btn" style="width:100%;padding:11px;border:none;border-radius:9px;background:#10201D;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">შესვლა</button>
+  </div>
+</div>
 <div class="wrap">
 <header>
   <h1>CarSpace <span>/ ინვოისების შემოწმება · v16</span></h1>
@@ -138,6 +147,19 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
 </footer>
 </div>
 
+<script>
+(function(){
+  var PASSWORD = "Carspace2026.";   /* ← შეცვალე შენს პაროლზე */
+  function unlock(){ var g=document.getElementById('pw-gate'); if(g) g.style.display='none'; try{sessionStorage.setItem('cs_auth','1');}catch(e){} }
+  function tryPw(){ if(document.getElementById('pw-input').value===PASSWORD){ unlock(); } else { document.getElementById('pw-err').textContent='არასწორი პაროლი'; } }
+  window.addEventListener('DOMContentLoaded',function(){
+    var authed=false; try{authed=sessionStorage.getItem('cs_auth')==='1';}catch(e){}
+    if(authed){ unlock(); return; }
+    document.getElementById('pw-btn').addEventListener('click', tryPw);
+    document.getElementById('pw-input').addEventListener('keydown', function(e){ if(e.key==='Enter') tryPw(); });
+  });
+})();
+</script>
 <script id="data" type="application/json">{"rates": [{"s": "VS Brothers", "st": "NJ", "loc": "New Jersey", "oldP": 2750, "newP": 3500}, {"s": "VS Brothers", "st": "GA", "loc": "Savannah", "oldP": 2500, "newP": 3400}, {"s": "VS Brothers", "st": "TX", "loc": "Texas", "oldP": 3300, "newP": 3400}, {"s": "VS Brothers", "st": "CA", "loc": "California", "oldP": 5450, "newP": 5600}, {"s": "Atlantic", "st": "WA", "loc": "Seattle", "oldP": null, "newP": 5200}, {"s": "Atlantic", "st": "IL", "loc": "Chicago", "oldP": null, "newP": 3900}], "changeVS": "2026-05-01", "cutFee": 350}</script>
 <script>
 'use strict';
