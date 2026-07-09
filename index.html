@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="ka">
-<head>
+<html lang="ka"><head><style>body {transition: opacity ease-in 0.2s; } 
+body[unresolved] {opacity: 0; display: block; overflow: hidden; position: relative; } 
+</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CarSpace — ინვოისების შემოწმება</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
 <style>
 :root{
   --paper:#F2F5F4; --card:#FFFFFF; --ink:#10201D; --ink-2:#4A5C57; --line:#DCE4E1;
@@ -55,11 +56,11 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
 </style>
 </head>
 <body>
-<div id="pw-gate" style="position:fixed;inset:0;z-index:9999;background:#10201D;display:flex;align-items:center;justify-content:center;font-family:'Noto Sans Georgian',sans-serif">
+<div id="pw-gate" style="position: fixed; inset: 0px; z-index: 9999; background: rgb(16, 32, 29); display: none; align-items: center; justify-content: center; font-family: &quot;Noto Sans Georgian&quot;, sans-serif;">
   <div style="background:#fff;border-radius:14px;padding:32px 36px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)">
     <div style="font-size:22px;font-weight:800;color:#10201D;margin-bottom:4px">CarSpace</div>
     <div style="font-size:13px;color:#4A5C57;margin-bottom:20px">ინვოისების შემოწმება — შესვლა</div>
-    <input id="pw-input" type="password" placeholder="პაროლი" style="width:100%;padding:11px 14px;border:1px solid #DCE4E1;border-radius:9px;font-size:15px;text-align:center;font-family:inherit;box-sizing:border-box" autofocus>
+    <input id="pw-input" type="password" placeholder="პაროლი" style="width:100%;padding:11px 14px;border:1px solid #DCE4E1;border-radius:9px;font-size:15px;text-align:center;font-family:inherit;box-sizing:border-box" autofocus="">
     <div id="pw-err" style="color:#C4372F;font-size:12px;height:16px;margin:8px 0"></div>
     <button id="pw-btn" style="width:100%;padding:11px;border:none;border-radius:9px;background:#10201D;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">შესვლა</button>
   </div>
@@ -79,7 +80,31 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
     </div>
     <table id="rates-tbl">
       <thead><tr><th>გამომგზავნი</th><th>შტატი</th><th>ლოკაცია</th><th class="num">ძველი ტარიფი $</th><th class="num">ახალი ტარიფი $</th><th></th></tr></thead>
-      <tbody id="rates-body"></tbody>
+      <tbody id="rates-body"><tr>
+    <td>VS Brothers</td><td style="font-family:var(--mono)">NJ</td><td>New Jersey</td>
+    <td class="num"><input type="number" value="2750" data-i="0" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="3500" data-i="0" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="0" style="padding:3px 10px;font-size:11px">✕</button></td></tr><tr>
+    <td>VS Brothers</td><td style="font-family:var(--mono)">GA</td><td>Savannah</td>
+    <td class="num"><input type="number" value="2500" data-i="1" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="3400" data-i="1" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="1" style="padding:3px 10px;font-size:11px">✕</button></td></tr><tr>
+    <td>VS Brothers</td><td style="font-family:var(--mono)">TX</td><td>Texas</td>
+    <td class="num"><input type="number" value="3300" data-i="2" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="3400" data-i="2" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="2" style="padding:3px 10px;font-size:11px">✕</button></td></tr><tr>
+    <td>VS Brothers</td><td style="font-family:var(--mono)">CA</td><td>California</td>
+    <td class="num"><input type="number" value="5450" data-i="3" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="5600" data-i="3" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="3" style="padding:3px 10px;font-size:11px">✕</button></td></tr><tr>
+    <td>Atlantic</td><td style="font-family:var(--mono)">WA</td><td>Seattle</td>
+    <td class="num"><input type="number" value="" data-i="4" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="5200" data-i="4" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="4" style="padding:3px 10px;font-size:11px">✕</button></td></tr><tr>
+    <td>Atlantic</td><td style="font-family:var(--mono)">IL</td><td>Chicago</td>
+    <td class="num"><input type="number" value="" data-i="5" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="3900" data-i="5" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="5" style="padding:3px 10px;font-size:11px">✕</button></td></tr></tbody>
     </table>
     <div class="flex" style="margin-top:12px">
       <select id="r-sender"><option>VS Brothers</option><option>Atlantic</option><option>PGL</option></select>
@@ -111,7 +136,7 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
       <label class="btn ghost" style="cursor:pointer">CSV ატვირთვა<input type="file" id="sheet-csv" accept=".csv" style="display:none"></label>
       <label>საკომისიო/მანქ. $ <input type="number" id="commission" value="25" style="width:70px"></label>
     </div>
-    <div class="hint" id="sheet-status">ცხრილი ჯერ არ ჩატვირთულა. „განახლებაზე" დაჭერით წამოიღებს ლაივ მონაცემებს — ცხრილი გახსნილი უნდა იყოს ბმულით (Share → Anyone with the link → Viewer).</div>
+    <div class="hint" id="sheet-status">✓ ჩაიტვირთა 3841 VIN ტრანსპორტის ფასით (tab gid=0) · 5:41:09 PM · მაგ: W1N4M4GB6MW140912, 1C4NJDEB7ED621417, 5NMS53AD5KH046343</div>
   </div>
 </section>
 
@@ -121,7 +146,7 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
     <div style="font-size:28px">📄</div>
     <div style="font-weight:700;margin:6px 0">ჩააგდე ან აირჩიე PDF ინვოისები</div>
     <div class="hint">შეიძლება რამდენიმე ერთად · გამომგზავნი ამოიცნობა ავტომატურად (PGL / Atlantic / VS Brothers)</div>
-    <input type="file" id="f-pdf" accept=".pdf" multiple>
+    <input type="file" id="f-pdf" accept=".pdf" multiple="">
   </label>
   <div class="hint" id="drop-status" style="display:none;margin-top:8px"></div>
 </section>
@@ -160,7 +185,7 @@ footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);paddin
   });
 })();
 </script>
-<script id="data" type="application/json">{"rates": [{"s": "VS Brothers", "st": "NJ", "loc": "New Jersey", "oldP": 2750, "newP": 3500}, {"s": "VS Brothers", "st": "GA", "loc": "Savannah", "oldP": 2500, "newP": 3400}, {"s": "VS Brothers", "st": "TX", "loc": "Texas", "oldP": 3300, "newP": 3400}, {"s": "VS Brothers", "st": "CA", "loc": "California", "oldP": 5450, "newP": 5600}, {"s": "Atlantic", "st": "WA", "loc": "Seattle", "oldP": null, "newP": 5200}, {"s": "Atlantic", "st": "IL", "loc": "Chicago", "oldP": null, "newP": 3900}], "changeVS": "2026-05-01", "cutFee": 350}</script>
+<script id="data" type="application/json">{"rates":[{"s":"VS Brothers","st":"NJ","loc":"New Jersey","oldP":2900,"newP":2750},{"s":"VS Brothers","st":"GA","loc":"Savannah","oldP":2700,"newP":2500},{"s":"VS Brothers","st":"TX","loc":"Texas","oldP":3500,"newP":3300},{"s":"VS Brothers","st":"CA","loc":"California","oldP":5450,"newP":5600},{"s":"Atlantic","st":"WA","loc":"Seattle","oldP":null,"newP":5200},{"s":"Atlantic","st":"IL","loc":"Chicago","oldP":null,"newP":3900}],"sheetUrl":"https://docs.google.com/spreadsheets/d/18LQzKBFie6S0zhdLtX_lQS8-vQN6JzZakqHKBf4IW8c/edit?gid=0","commission":25,"motoVS":150,"motoATL":300,"hybVS":200,"hybATL":400,"cutFee":350,"changeVS":"2026-05-01","changeATL":""}</script>
 <script>
 'use strict';
 const EMB = JSON.parse(document.getElementById('data').textContent);
@@ -563,5 +588,6 @@ $('save-html').onclick=()=>{
 };
 renderRates();
 </script>
-</body>
-</html>
+
+
+</body></html>
