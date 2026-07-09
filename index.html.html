@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CarSpace — ინვოისების შემოწმება</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F5F4; --card:#FFFFFF; --ink:#10201D; --ink-2:#4A5C57; --line:#DCE4E1;
+  --ok:#0F6B5C; --ok-bg:#E3F1EC; --bad:#C4372F; --bad-bg:#FBE9E7;
+  --steel:#2B4B6F; --amber:#B97F14; --amber-bg:#FBF3E0;
+  --mono:'IBM Plex Mono',monospace; --sans:'Noto Sans Georgian',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 24px 60px}
+header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:20px}
+header h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+header h1 span{color:var(--steel)}
+.sub{color:var(--ink-2);font-size:13px}
+section{margin-bottom:28px}
+section>h2{font-size:15px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+section>h2::before{content:"";width:14px;height:14px;background:var(--steel);border-radius:3px;display:inline-block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:7px 14px;border:none;border-radius:7px;background:var(--ink);color:#fff;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.green{background:var(--ok)}
+input,select{font-family:var(--sans);font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+input[type=number]{font-family:var(--mono);width:100px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);text-align:left;padding:9px;border-bottom:2px solid var(--ink);white-space:nowrap}
+td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+th.num{text-align:right}
+.plate{font-family:var(--mono);font-weight:600;font-size:12px;background:var(--ink);color:#fff;padding:2px 8px;border-radius:4px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px}
+.pill.g{background:var(--ok-bg);color:var(--ok)}.pill.r{background:var(--bad-bg);color:var(--bad)}.pill.a{background:var(--amber-bg);color:var(--amber)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:34px;text-align:center;color:var(--ink-2);cursor:pointer;transition:border-color .15s;background:var(--card)}
+.drop:hover,.drop.over{border-color:var(--steel);color:var(--steel)}
+.drop input{display:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:16px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+.kpi .lbl{font-size:12px;color:var(--ink-2);font-weight:600}
+.kpi .val{font-family:var(--mono);font-size:21px;font-weight:600}
+.kpi.good .val{color:var(--ok)}.kpi.bad .val{color:var(--bad)}
+.rawtxt{font-family:var(--mono);font-size:11px;background:#F7FAF9;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:200px;overflow:auto;white-space:pre-wrap;margin-top:8px;display:none}
+.pos{color:var(--ok);font-weight:600}.neg{color:var(--bad);font-weight:600}
+.hint{font-size:12px;color:var(--ink-2);margin-top:6px}
+.flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+footer{color:var(--ink-2);font-size:12px;border-top:1px solid var(--line);padding-top:12px;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>CarSpace <span>/ ინვოისების შემოწმება · v16</span></h1>
+  <div class="sub">გამომგზავნის ინვოისები ↔ შეთანხმებული ტარიფები</div>
+</header>
+
+<section>
+  <h2>ტარიფები — ძველი / ახალი და ცვლილების თარიღი</h2>
+  <div class="card">
+    <div class="flex" style="margin-bottom:12px">
+      <label><b>VS Brothers</b> — ცვლილების თარიღი <input type="date" id="chg-vs"></label>
+      <span class="hint">ამ თარიღიდან ამოქმედდა „ახალი" ფასები ყველა შტატზე. ცარიელი = მხოლოდ ერთი (ახლანდელი) ფასი მოქმედებს.</span>
+    </div>
+    <table id="rates-tbl">
+      <thead><tr><th>გამომგზავნი</th><th>შტატი</th><th>ლოკაცია</th><th class="num">ძველი ტარიფი $</th><th class="num">ახალი ტარიფი $</th><th></th></tr></thead>
+      <tbody id="rates-body"></tbody>
+    </table>
+    <div class="flex" style="margin-top:12px">
+      <select id="r-sender"><option>VS Brothers</option><option>Atlantic</option><option>PGL</option></select>
+      <input id="r-state" placeholder="შტატი (მაგ. NJ)" style="width:110px">
+      <input id="r-loc" placeholder="ლოკაცია" style="width:150px">
+      <input id="r-old" type="number" placeholder="ძველი $" style="width:100px">
+      <input id="r-new" type="number" placeholder="ახალი $" style="width:100px">
+      <button class="btn ghost" id="r-add">+ დამატება</button>
+    </div>
+    <div class="flex" style="margin-top:10px">
+      <label>საკომისიო/მანქ. $ <input type="number" id="commission" value="25" style="width:70px"></label>
+      <label>მოტო VS $ <input type="number" id="moto-vs" value="150" style="width:80px"></label>
+      <label>მოტო Atlantic $ <input type="number" id="moto-atl" value="300" style="width:80px"></label>
+      <label>ჰიბრიდი VS $ <input type="number" id="hyb-vs" value="200" style="width:80px"></label>
+      <label>ჰიბრიდი Atlantic $ <input type="number" id="hyb-atl" value="400" style="width:80px"></label>
+      <label>დაჭრა (NJ/GA/TX) $ <input type="number" id="cut-fee" value="350" style="width:80px"></label>
+      <button class="btn green" id="save-html" style="margin-left:auto">💾 პლატფორმის შენახვა</button>
+    </div>
+    <div class="hint">თუ შტატს ერთი ფასი აქვს (არ შეცვლილა), მხოლოდ „ახალი" შეავსე. Atlantic-ის ცვლილების თარიღი დაზუსტების შემდეგ დაემატება.</div>
+  </div>
+</section>
+
+<section>
+  <h2>შიდა ტრანსპორტის ფასები — Google Sheets (ლაივ)</h2>
+  <div class="card">
+    <div class="flex">
+      <input id="sheet-url" style="flex:1;min-width:280px" value="https://docs.google.com/spreadsheets/d/18LQzKBFie6S0zhdLtX_lQS8-vQN6JzZakqHKBf4IW8c/edit?gid=0">
+      <button class="btn" id="sheet-load">🔄 განახლება</button>
+      <label class="btn ghost" style="cursor:pointer">CSV ატვირთვა<input type="file" id="sheet-csv" accept=".csv" style="display:none"></label>
+      <label>საკომისიო/მანქ. $ <input type="number" id="commission" value="25" style="width:70px"></label>
+    </div>
+    <div class="hint" id="sheet-status">ცხრილი ჯერ არ ჩატვირთულა. „განახლებაზე" დაჭერით წამოიღებს ლაივ მონაცემებს — ცხრილი გახსნილი უნდა იყოს ბმულით (Share → Anyone with the link → Viewer).</div>
+  </div>
+</section>
+
+<section>
+  <h2>ინვოისების ატვირთვა (PDF)</h2>
+  <label class="drop" id="drop">
+    <div style="font-size:28px">📄</div>
+    <div style="font-weight:700;margin:6px 0">ჩააგდე ან აირჩიე PDF ინვოისები</div>
+    <div class="hint">შეიძლება რამდენიმე ერთად · გამომგზავნი ამოიცნობა ავტომატურად (PGL / Atlantic / VS Brothers)</div>
+    <input type="file" id="f-pdf" accept=".pdf" multiple>
+  </label>
+  <div class="hint" id="drop-status" style="display:none;margin-top:8px"></div>
+</section>
+
+<div class="kpis" id="kpis" style="display:none"></div>
+
+<section id="res-sec" style="display:none">
+  <h2>შემოწმების შედეგები <span class="sub" id="res-count"></span></h2>
+  <div class="card" style="padding:0;overflow:auto">
+    <table>
+      <thead><tr><th>ფაილი</th><th>გამომგზავნი</th><th>კონტეინერი</th><th>ლოკაცია</th><th class="num">ტარიფი</th><th class="num">Ocean/კონტ. ინვოისში</th><th class="num">სხვაობა</th><th class="num">დამატ. ხარჯები</th><th>სტატუსი</th><th></th></tr></thead>
+      <tbody id="res-body"></tbody>
+    </table>
+  </div>
+  <div class="flex" style="margin-top:10px">
+    <button class="btn" id="exp">ექსპორტი (CSV)</button>
+    <button class="btn ghost" id="clear-res">შედეგების გასუფთავება</button>
+  </div>
+</section>
+
+<footer>
+  მოტოციკლი: VS — ინვოისის ცალკე „Motorcycle" ხაზები მოწმდება მოტოს ტარიფთან ($150); Atlantic — მოტოს Ocean Freight ხაზი ($300) ცალკე ითვლება და კონტეინერის მოსალოდნელს ემატება. Atlantic-ის ტარიფი მანქანაზე იშლება (ტარიფი ÷ 4): Chicago $975/მანქ., Seattle/Tacoma $1,300/მანქ. — Chicago-ს ცალკეული ინვოისები კონტეინერის ნომრით ავტომატურად ჯგუფდება და ჯამი ტარიფს ედრება. სისტემა PDF-დან ამოიცნობს: გამომგზავნელს (ტექსტში სახელით), კონტეინერის ნომრებს, თანხებს და ლოკაციას, შემდეგ კონტეინერის საფასურს ადარებს შეთანხმებულ ტარიფს. „ტექსტი" ღილაკით ნახავ, რა წაიკითხა PDF-დან — თუ ამოცნობა არასწორია, ინვოისში მნიშვნელობის შესწორება შეგიძლია და სტატუსი გადაითვლება. 💾 შენახვა ტარიფებს ახალ HTML ფაილში ჩაწერს.
+</footer>
+</div>
+
+<script id="data" type="application/json">{"rates": [{"s": "VS Brothers", "st": "NJ", "loc": "New Jersey", "oldP": 2750, "newP": 3500}, {"s": "VS Brothers", "st": "GA", "loc": "Savannah", "oldP": 2500, "newP": 3400}, {"s": "VS Brothers", "st": "TX", "loc": "Texas", "oldP": 3300, "newP": 3400}, {"s": "VS Brothers", "st": "CA", "loc": "California", "oldP": 5450, "newP": 5600}, {"s": "Atlantic", "st": "WA", "loc": "Seattle", "oldP": null, "newP": 5200}, {"s": "Atlantic", "st": "IL", "loc": "Chicago", "oldP": null, "newP": 3900}], "changeVS": "2026-05-01", "cutFee": 350}</script>
+<script>
+'use strict';
+const EMB = JSON.parse(document.getElementById('data').textContent);
+let RATES = (EMB.rates||[]).map(r => ('newP' in r || 'oldP' in r) ? r : {s:r.s, st:r.st, loc:r.loc, oldP:null, newP:r.p});
+window.CHG_ATL = EMB.changeATL || '';
+window.addEventListener('DOMContentLoaded',()=>{ if(EMB.sheetUrl) $('sheet-url').value=EMB.sheetUrl; if(EMB.commission!=null) $('commission').value=EMB.commission; if(EMB.motoVS!=null) $('moto-vs').value=EMB.motoVS; if(EMB.motoATL!=null) $('moto-atl').value=EMB.motoATL; if(EMB.changeVS) $('chg-vs').value=EMB.changeVS; if(EMB.hybVS!=null) $('hyb-vs').value=EMB.hybVS; if(EMB.hybATL!=null) $('hyb-atl').value=EMB.hybATL; if(EMB.cutFee!=null) $('cut-fee').value=EMB.cutFee; });
+let RESULTS = [];
+const $ = id => document.getElementById(id);
+const fmt = n => (n<0?'−':'') + Math.abs(Math.round(n)).toLocaleString('en-US');
+// file:// რეჟიმში worker-ის ცალკე ჩატვირთვა იბლოკება ("unique security origin").
+// ამიტომ worker-ის კოდს fetch-ით ჩამოვწერთ და იმავე origin-ის blob URL-ად ვუშვებთ.
+const WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const pdfWorkerReady = (async function setupPdfWorker(){
+  if(typeof pdfjsLib==='undefined') return false;
+  try{
+    const code = await (await fetch(WORKER_URL)).text();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], {type:'application/javascript'}));
+    return true;
+  }catch(e){
+    try{ pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL; }catch(_){}
+    return false;
+  }
+})();
+
+/* ---------- rates ---------- */
+function renderRates(){
+  $('rates-body').innerHTML = RATES.map((r,i)=>`<tr>
+    <td>${r.s}</td><td style="font-family:var(--mono)">${r.st}</td><td>${r.loc||''}</td>
+    <td class="num"><input type="number" value="${r.oldP??''}" data-i="${i}" data-f="oldP" placeholder="—" style="width:95px;text-align:right"></td>
+    <td class="num"><input type="number" value="${r.newP??''}" data-i="${i}" data-f="newP" style="width:95px;text-align:right"></td>
+    <td><button class="btn ghost" data-del="${i}" style="padding:3px 10px;font-size:11px">✕</button></td></tr>`).join('')
+    || '<tr><td colspan="6" style="color:var(--ink-2)">ტარიფები არ არის</td></tr>';
+  document.querySelectorAll('#rates-body input').forEach(inp=>inp.onchange=()=>{
+    const r=RATES[+inp.dataset.i], v=inp.value===''?null:parseFloat(inp.value);
+    r[inp.dataset.f]=v; recheck(); });
+  document.querySelectorAll('#rates-body [data-del]').forEach(b=>b.onclick=()=>{ RATES.splice(+b.dataset.del,1); renderRates(); recheck(); });
+}
+$('r-add').onclick=()=>{
+  const s=$('r-sender').value, st=$('r-state').value.trim().toUpperCase(), loc=$('r-loc').value.trim();
+  const oldP=$('r-old').value===''?null:parseFloat($('r-old').value);
+  const newP=$('r-new').value===''?null:parseFloat($('r-new').value);
+  if(!st || (oldP==null && newP==null)){ alert('შეავსე შტატი და მინიმუმ ერთი ტარიფი'); return; }
+  RATES.push({s,st,loc,oldP,newP});
+  ['r-state','r-loc','r-old','r-new'].forEach(id=>$(id).value='');
+  renderRates(); recheck();
+};
+const changeDate = sender => sender==='VS Brothers' ? ($('chg-vs').value||'') : (window.CHG_ATL||'');
+$('chg-vs').addEventListener('change', recheck);
+['commission','moto-vs','moto-atl','hyb-vs','hyb-atl','cut-fee'].forEach(id=>$(id).addEventListener('change',recheck));
+
+/* ---------- pdf parsing ---------- */
+async function parsePdf(file){
+  if(typeof pdfjsLib==='undefined')
+    throw new Error('PDF ბიბლიოთეკა ვერ ჩაიტვირთა — საჭიროა ინტერნეტი (გახსენით ფაილი ინტერნეტთან დაკავშირებისას)');
+  await pdfWorkerReady;
+  const buf = await file.arrayBuffer();
+  let pdf;
+  try{
+    pdf = await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  }catch(e){
+    pdf = await pdfjsLib.getDocument({data:new Uint8Array(buf), useWorkerFetch:false, isEvalSupported:false}).promise;
+  }
+  let text='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    text += tc.items.map(i=>i.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function handleFiles(files){
+  if(!files || !files.length) return;
+  const st=$('drop-status'); if(st){ st.style.display='block'; st.textContent=`მუშავდება ${files.length} ფაილი…`; }
+  let done=0, failed=0;
+  for(const f of files){
+    try{
+      if(!/\.pdf$/i.test(f.name)) throw new Error('არა-PDF ფაილი');
+      const text = await parsePdf(f);
+      if(!text || text.trim().length<20) throw new Error('ტექსტი ვერ ამოვიღე — შესაძლოა სკანირებული/სურათია');
+      analyse(text, f.name); done++;
+      if(st) st.textContent=`მუშავდება… ${done}/${files.length}`;
+    }catch(err){
+      failed++;
+      RESULTS.push({sender:'?',container:'—',st:null,city:'',files:[f.name],texts:['⚠ '+err.message],
+        oceanLines:[],oceanSum:0,cars:[],others:[],totalSum:0,motoCount:0,motoLines:[],idate:'',error:err.message});
+    }
+  }
+  if(st) st.textContent = `✓ დამუშავდა ${done} ფაილი${failed?` · ${failed} ვერ წაიკითხა`:''}`;
+  renderResults();
+}
+$('f-pdf').addEventListener('change', e=>{ handleFiles([...e.target.files]); e.target.value=''; });
+const drop=$('drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop', e=>handleFiles([...e.dataTransfer.files].filter(f=>/\.pdf$/i.test(f.name))));
+
+/* ---------- Google Sheet (შიდა ტრანსპორტი) ---------- */
+let SHEET = new Map();   // VIN -> price
+const VIN_RE = /\b[A-HJ-NPR-Z0-9]{17}\b/;
+function parseSheetRows(rows){
+  SHEET = new Map(); let n=0;
+  if(!rows || !rows.length) return 0;
+  const VINRE = /\b[A-HJ-NPR-Z0-9]{17}\b/g;
+  // header detection (optional, tolerant)
+  const head = (Array.isArray(rows[0])?rows[0]:Object.values(rows[0])).map(c=>String(c||'').trim().toLowerCase());
+  let vinIdx  = head.findIndex(c=>c==='vin' || c.includes('vin'));
+  let priceIdx= head.findIndex(c=>c==='price' || (c.includes('price') && !c.includes('storage')));
+  const hasHeader = vinIdx>=0 || priceIdx>=0;
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+  dataRows.forEach(row=>{
+    const cells = (Array.isArray(row)?row:Object.values(row)).map(c=>String(c==null?'':c));
+    // 1) VIN: preferred column, else scan all cells
+    let vins = [];
+    if(vinIdx>=0 && cells[vinIdx]){ vins = (cells[vinIdx].toUpperCase().match(VINRE)||[]); }
+    if(!vins.length){ for(const c of cells){ const mm=c.toUpperCase().match(VINRE); if(mm){ vins=mm; break; } } }
+    if(!vins.length) return;
+    // 2) Price: preferred column, else first price-looking numeric that isn't date/phone/id/vin
+    let price=null;
+    if(priceIdx>=0){ price = parseAmt(cells[priceIdx]); }
+    if(price==null){
+      for(const c of cells){
+        const s=c.trim();
+        if(!s) continue;
+        if(VINRE.test(s)) { VINRE.lastIndex=0; continue; }
+        if(/\d{1,2}\/\d{1,2}\/\d{2,4}/.test(s)) continue;      // თარიღი
+        if(/\(\d{3}\)|\d{3}[-.\s]\d{3}[-.\s]\d{4}/.test(s)) continue; // ტელეფონი
+        if(/^\d{7,}$/.test(s.replace(/\D/g,''))) continue;      // გრძელი ID/ლოტი
+        const v=parseAmt(s);
+        if(v!=null && v>=20 && v<=20000){ price=v; break; }
+      }
+    }
+    if(price==null || price<=0) return;
+    const per = price/vins.length;
+    vins.forEach(v=>{ SHEET.set(v, per); n++; });
+  });
+  return n;
+}
+function sheetIdOf(url){ const m=String(url).match(/spreadsheets\/d\/([A-Za-z0-9_-]+)/); return m?m[1]:null; }
+async function loadSheet(){
+  const id = sheetIdOf($('sheet-url').value);
+  if(!id){ $('sheet-status').textContent='ბმული ვერ გავარჩიე — ჩასვი სრული Google Sheets ბმული.'; return; }
+  const wantGid = (String($('sheet-url').value).match(/[#&?]gid=(\d+)/)||[])[1];
+  $('sheet-status').textContent='იტვირთება…';
+  const gidsToTry = wantGid ? [wantGid, '0'] : ['0'];
+  // add a few common gids as fallback
+  ['1','2'].forEach(g=>{ if(!gidsToTry.includes(g)) gidsToTry.push(g); });
+  let best=0, bestGid=null, lastErr='';
+  for(const gid of gidsToTry){
+    try{
+      const res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`);
+      if(!res.ok){ lastErr='HTTP '+res.status; continue; }
+      const csv = await res.text();
+      if(/google-site-verification|Sign in|<HTML/i.test(csv.slice(0,200))){ lastErr='წვდომა დახურულია'; continue; }
+      const parsed = Papa.parse(csv, {skipEmptyLines:true});
+      const cnt = parseSheetRows(parsed.data);
+      if(cnt>best){ best=cnt; bestGid=gid; }
+      if(cnt>0 && gid===wantGid) break; // requested tab worked
+    }catch(err){ lastErr=err.message; }
+  }
+  if(best>0){
+    // reload the best gid so SHEET holds its data (parseSheetRows overwrites each call)
+    try{
+      const res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${bestGid}`);
+      parseSheetRows(Papa.parse(await res.text(), {skipEmptyLines:true}).data);
+    }catch(e){}
+    const sample=[...SHEET.keys()].slice(0,3).join(', ');
+    $('sheet-status').textContent = `✓ ჩაიტვირთა ${SHEET.size} VIN ტრანსპორტის ფასით (tab gid=${bestGid}) · ${new Date().toLocaleTimeString('ka-GE')} · მაგ: ${sample}`;
+    recheck();
+  } else {
+    $('sheet-status').innerHTML = `ვერ ჩაიტვირთა (${lastErr||'VIN ვერ ვიპოვე'}). შეამოწმე: (1) ცხრილი გახსნილია „Anyone with the link → Viewer"; (2) ბმულში სწორი tab-ის gid წერია (გახსენი სასურველი ფურცელი და დააკოპირე მისამართი zგან). ან ატვირთე იგივე ფურცელი CSV-დ.`;
+  }
+}
+$('sheet-load').onclick = loadSheet;
+['moto-vs','moto-atl','commission','hyb-vs','hyb-atl'].forEach(id=>$(id).addEventListener('change',recheck));
+$('sheet-csv').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  Papa.parse(f, {skipEmptyLines:true, complete:res=>{
+    const n=parseSheetRows(res.data);
+    $('sheet-status').textContent=`✓ CSV-დან ჩაიტვირთა ${n} VIN`;
+    recheck();
+  }});
+});
+const commission = () => parseFloat($('commission').value)||0;
+
+/* ---------- sender-specific parsing ---------- */
+const CITY2ST = {CHICAGO:'IL',TACOMA:'WA',SEATTLE:'WA',SAVANNAH:'GA',NEWARK:'NJ',ELIZABETH:'NJ',
+  HOUSTON:'TX',DALLAS:'TX',AUSTIN:'TX','LOS ANGELES':'CA','LONG BEACH':'CA',OAKLAND:'CA'};
+const CARS_PER_CONT = 4;
+const MOTO_RE = /MOTORCYCLE|MOTO\b|HARLEY|DUCATI|KAWASAKI|TRIUMPH|APRILIA|\bKTM\b|YAMAHA\s?(YZF|MT|R\d)|SUZUKI\s?GSX|INDIAN\s?(SCOUT|CHIEF)|VESPA/i;
+const motoRate = s => parseFloat($(s==='VS Brothers'?'moto-vs':'moto-atl').value)||0;
+const hybRate  = s => parseFloat($(s==='VS Brothers'?'hyb-vs':'hyb-atl').value)||0;
+const HYB_RE = /Hybrid\s*&?\s*Electric|Electric car Haz|Haz fee|HYBRID|ELECTRIC/i;
+const cutFee = () => parseFloat($('cut-fee').value)||0;
+const CUT_STATES = ['NJ','GA','TX'];
+function parseAmt(s){
+  if(s==null) return null;
+  s = String(s).replace(/[$]|USD/gi,'').trim().replace(/\s+/g,'');
+  if(!s) return null;
+  if(/,\d{2}$/.test(s)) s = s.replace(/\./g,'').replace(',', '.');
+  else s = s.replace(/,/g,'');
+  const n = parseFloat(s); return isNaN(n)?null:n;
+}
+function rateFor(sender, st, when){
+  const r = RATES.find(x=>x.s===sender && x.st===st);
+  if(!r) return null;
+  const chg = changeDate(sender);
+  let p;
+  if(r.oldP==null) p=r.newP;                          // მხოლოდ ერთი ფასი
+  else if(r.newP==null) p=r.oldP;
+  else if(!chg || !when) p=r.newP;                    // თარიღი უცნობია → ახალი
+  else p = (when < chg) ? r.oldP : r.newP;            // ინვოისის თარიღით
+  return p==null ? null : {s:sender, st, loc:r.loc, p, oldP:r.oldP, newP:r.newP, chg};
+}
+
+function parseVS(text, fname){
+  const cont = (text.match(/Container#\s*([A-Z]{4}\d{7})/) || text.match(/Invoice NUMBER:\s*([A-Z]{4}\d{7})/) || [])[1] || '—';
+  const st = (text.match(/\b([A-Z]{2})-(?:POTI|BATUMI|[A-Z]+)-(?:MAERSK|COSCO|MSC|CMA|ONE|HAPAG|ZIM|[A-Z]+)/) || text.match(/\b([A-Z]{2})-(?:POTI|BATUMI)/) || [])[1] || null;
+  let fee = null; const cars = []; const others = []; const motoLines = []; const hybLines = []; const cutLines = [];
+  for(const m of text.matchAll(/([A-Za-z][^$]{2,90}?)\$\s*([\d\s.,]+?)\s*N\/A/g)){
+    const desc = m[1].replace(/\s+/g,' ').trim();
+    const amt = parseAmt(m[2]);
+    if(amt==null || amt===0) continue;
+    if(/Container#/.test(desc)){ fee = amt; continue; }
+    const vin = (desc.match(/\b[A-HJ-NPR-Z0-9]{17}\b/)||[])[0]||null;
+    if(/^Transportation/i.test(desc)) cars.push({vin, invTrans:amt, checkFee:null});
+    else if(/^Motorcycle/i.test(desc)) motoLines.push({vin, amt});
+    else if(HYB_RE.test(desc)) hybLines.push({vin, amt});
+    else if(/^Cut Car/i.test(desc)) cutLines.push({vin, amt});
+    else others.push({desc: desc.slice(0,70), amt, vin});
+  }
+  const total = parseAmt((text.match(/Total Amount Due:\s*\$?\s*([\d\s.,]+)/) || [])[1]);
+  const idate = (text.match(/Invoice DATE:\s*(\d{4}-\d{2}-\d{2})/)||[])[1] || '';
+  return { idate, sender:'VS Brothers', container:cont, st, oceanLines:fee!=null?[fee]:[], oceanSum:fee||0,
+           cars, others, total, motoLines, motoCount:motoLines.length, hybLines, cutLines, file:fname, text };
+}
+function parseAtlantic(text, fname){
+  const cont = (text.match(/Container No\.?:\s*([A-Z]{4}\d{7})/) || [])[1] || '—';
+  const city = ((text.match(/([A-Z][A-Z ]{2,20})\/POTI/) || [])[1] || '').trim();
+  const st = CITY2ST[city] || null;
+  const total = parseAmt((text.match(/Total\s*USD\s*([\d,\.]+)/) || [])[1]);
+  // ერთი ხაზოვანი გავლა: ხარჯი მიეკუთვნება უახლოეს წინა VIN-ს
+  const vinMarks = [];
+  for(const m of text.matchAll(/\b[A-HJ-NPR-Z0-9]{17}\b/g))
+    if(!/^\d+$/.test(m[0])) vinMarks.push({vin:m[0], i:m.index});
+  const carByVin = new Map();
+  const others = []; const oceanLines = []; const hybLines = [];
+  for(const m of text.matchAll(/([A-Za-z][A-Za-z &()'\/-]{2,45}?)\s*1\s*USD\s*([\d,\.]+)/g)){
+    const d = m[1].trim(), a = parseAmt(m[2]);
+    if(a==null) continue;
+    if(/Ocean Freight/i.test(d)){ oceanLines.push(a); continue; }
+    const prev = [...vinMarks].reverse().find(v=>v.i < m.index);
+    const vin = prev ? prev.vin : null;
+    if(HYB_RE.test(d)){ hybLines.push({vin, amt:a}); continue; }
+    if(/INLAND FREIGHT/i.test(d) || /CHECK FEE/i.test(d)){
+      if(vin && !carByVin.has(vin)) carByVin.set(vin, {vin, invTrans:null, checkFee:null});
+      const car = vin ? carByVin.get(vin) : null;
+      if(car){ if(/INLAND/i.test(d)) car.invTrans=(car.invTrans||0)+a; else car.checkFee=(car.checkFee||0)+a; }
+      else others.push({desc:d, amt:a, vin:null});
+    } else others.push({desc:d, amt:a, vin});
+  }
+  vinMarks.forEach(v=>{ if(!carByVin.has(v.vin)) carByVin.set(v.vin, {vin:v.vin, invTrans:null, checkFee:null}); });
+  const dm = text.match(/([A-Z][a-z][a-z])\/(\d{2})\/(\d{4})/);
+  const idate = dm ? dm[3]+'-'+({Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'}[dm[1]]||'01')+'-'+dm[2] : '';
+  return { idate, sender:'Atlantic', container:cont, st, city, oceanLines, oceanSum:oceanLines.reduce((a,b)=>a+b,0),
+           cars:[...carByVin.values()], others, total, motoLines:[], motoCount:0, hybLines, cutLines:[], file:fname, text };
+}
+function analyse(text, fname){
+  let p;
+  if(/V&S\s*CarGo|VSBROTHERS/i.test(text)) p = parseVS(text,fname);
+  else if(/ATLANTIC\s*EXPRESS/i.test(text)) p = parseAtlantic(text,fname);
+  else p = { sender:/PGL|PACIFIC\s*GLOBAL/i.test(text)?'PGL':'?', container:(text.match(/([A-Z]{4}\d{7})/)||[])[1]||'—',
+        st:null, oceanLines:[], oceanSum:0, cars:[], others:[], total:null, file:fname, text };
+  let g = RESULTS.find(r=>r.container===p.container && r.sender===p.sender && p.container!=='—');
+  if(!g){ g = { sender:p.sender, container:p.container, st:p.st, city:p.city||'', files:[], texts:[],
+                oceanLines:[], oceanSum:0, cars:[], others:[], totalSum:0, motoCount:0, motoLines:[], hybLines:[], cutLines:[], idate:'' }; RESULTS.push(g); }
+  if(p.st) g.st=p.st; if(p.city) g.city=p.city;
+  g.files.push(fname); g.texts.push(p.text||'');
+  g.oceanLines.push(...p.oceanLines); g.oceanSum += p.oceanSum;
+  g.cars.push(...p.cars); g.others.push(...p.others); g.totalSum += p.total||0; g.motoCount += p.motoCount||0; g.motoLines.push(...(p.motoLines||[])); g.hybLines.push(...(p.hybLines||[])); g.cutLines.push(...(p.cutLines||[])); if(p.idate && (!g.idate || p.idate<g.idate)) g.idate=p.idate;
+}
+function carCheck(g, car){
+  const sheet = car.vin ? SHEET.get(car.vin) : undefined;
+  if(car.invTrans==null) return {sheet, exp:null, diff:null, cls:'a', txt:'ტრანსპ. ვერ ვნახე'};
+  if(sheet===undefined) return {sheet:null, exp:null, diff:null, cls:'a', txt:'ცხრილში არაა'};
+  const exp = g.sender==='VS Brothers' ? sheet + commission() : sheet;
+  const diff = car.invTrans - exp;
+  if(Math.abs(diff)<1) return {sheet, exp, diff:0, cls:'g', txt:'ემთხვევა'};
+  return {sheet, exp, diff, cls: diff>0?'r':'a', txt:(diff>0?'ზედმეტია +$':'ნაკლებია −$')+fmt(Math.abs(diff))};
+}
+function verdict(g){
+  if(g.error) return ['r','ვერ წაიკითხა', null];
+  const rate = g.st ? rateFor(g.sender, g.st, g.idate||undefined) : null;
+  if(!rate) return ['a','ვერ შემოწმდა — '+(g.st?'ტარიფი არაა':'ლოკაცია ვერ ამოიცნო'), null];
+  const R = rate.p, mR = motoRate(g.sender);
+  if(g.sender==='Atlantic'){
+    const per = R / CARS_PER_CONT;
+    const motoLines = g.oceanLines.filter(a=>mR>0 && Math.abs(a-mR)<=1);
+    g.motoCount = motoLines.length;
+    const carLines  = g.oceanLines.filter(a=>!(mR>0 && Math.abs(a-mR)<=1));
+    const badCar  = carLines.filter(a=>Math.abs(a-per)>1);
+    const carSum = carLines.reduce((a,b)=>a+b,0);
+    const hybSum = (g.hybLines||[]).reduce((a,x)=>a+x.amt,0);
+    const hybExp = hybSum>0 ? hybRate('Atlantic') : 0;
+    const expected = R + mR*motoLines.length + hybExp;
+    if(carLines.length < CARS_PER_CONT && carSum < R-1)
+      return badCar.length ? ['r',`Ocean ≠ $${fmt(per)}/მანქ.`, expected]
+        : ['a',`ნაწილობრივი ${carLines.length}/${CARS_PER_CONT}${motoLines.length?` +${motoLines.length}🏍`:''}`, expected];
+    const d = (g.oceanSum + hybSum) - expected;
+    if(Math.abs(d)<1 && !badCar.length) return ['g','ემთხვევა'+(motoLines.length?` (${motoLines.length}🏍)`:'')+(hybSum>0?' ⚡':''), expected];
+    return d>0 ? ['r','ზედმეტია +$'+fmt(d), expected] : (badCar.length?['r','Ocean ხაზები არ ემთხვევა',expected]:['a','ნაკლებია −$'+fmt(-d), expected]);
+  }
+  // VS Brothers: კონტეინერი ტარიფთან; მოტო და ჰიბრიდი ცალკე ხაზებად
+  const badMoto = (g.motoLines||[]).filter(m=>Math.abs(m.amt-mR)>1);
+  const hR = hybRate('VS Brothers');
+  const badHyb = (g.hybLines||[]).filter(x=>Math.abs(x.amt-hR)>1);
+  const badCut = CUT_STATES.includes(g.st) ? (g.cutLines||[]).filter(x=>Math.abs(x.amt-cutFee())>1) : [];
+  const d = g.oceanSum - R;
+  const motoTag = g.motoCount ? ` (${g.motoCount}🏍×$${fmt(mR)})` : '';
+  const hybTag = (g.hybLines&&g.hybLines.length) ? ' ⚡' : '';
+  if(badMoto.length) return ['r',`მოტოს ხაზი ≠ $${fmt(mR)}`, R];
+  if(badHyb.length) return ['r',`ჰიბრიდის ხაზი ≠ $${fmt(hR)}`, R];
+  if(badCut.length) return ['r',`დაჭრა ≠ $${fmt(cutFee())} (${badCut.length} მანქ.)`, R];
+  const cutTag = (g.cutLines&&g.cutLines.length&&CUT_STATES.includes(g.st)) ? ` ✂${g.cutLines.length}` : '';
+  if(Math.abs(d)<1) return ['g','ემთხვევა'+motoTag+hybTag+cutTag, R];
+  return d>0 ? ['r','ზედმეტია +$'+fmt(d), R] : ['a','ნაკლებია −$'+fmt(-d), R];
+}
+/* ---------- results ---------- */
+function renderResults(){
+  $('res-sec').style.display=''; $('kpis').style.display='';
+  $('res-count').textContent=`(${RESULTS.length} კონტეინერი)`;
+  let ok=0, over=0, overSum=0, part=0, uncheck=0, transBad=0, othersN=0, othersSum=0;
+  RESULTS.forEach(g=>{ const [c,t,R]=verdict(g);
+    if(c==='g')ok++; else if(c==='r'){over++; if(R!=null&&g.oceanSum>R)overSum+=g.oceanSum-R;}
+    else (t.startsWith('ნაწილობრივი')?part++:uncheck++);
+    g.cars.forEach(car=>{ const cc=carCheck(g,car); if(cc.cls==='r'){transBad++; overSum+=Math.max(0,cc.diff||0);} });
+    othersN += g.others.length; othersSum += g.others.reduce((a,o)=>a+o.amt,0);
+    if(g.sender==='Atlantic') g.cars.forEach(car=>{ if(car.checkFee!=null && Math.abs(car.checkFee-commission())>0.5) transBad++; });
+  });
+  $('kpis').innerHTML=`
+    <div class="kpi"><div class="lbl">კონტეინერი</div><div class="val">${RESULTS.length}</div></div>
+    <div class="kpi good"><div class="lbl">ტარიფი ემთხვევა</div><div class="val">${ok}</div></div>
+    <div class="kpi ${over?'bad':'good'}"><div class="lbl">ტარიფის შეუსაბამობა</div><div class="val">${over}</div></div>
+    <div class="kpi ${transBad?'bad':'good'}"><div class="lbl">ტრანსპ. შეუსაბამობა</div><div class="val">${transBad}</div></div>
+    <div class="kpi ${overSum>0?'bad':'good'}"><div class="lbl">ზედმეტის ჯამი</div><div class="val">$${fmt(overSum)}</div></div>
+    <div class="kpi ${othersN?'bad':'good'}"><div class="lbl">სხვა ხარჯი (გადასამოწმებელი)</div><div class="val">${othersN} · $${fmt(othersSum)}</div></div>
+    <div class="kpi"><div class="lbl">ნაწილობრივი / ვერ შემოწმდა</div><div class="val">${part} / ${uncheck}</div></div>`;
+  $('res-body').innerHTML = RESULTS.map((g,i)=>{
+    const [cls,txt,R]=verdict(g);
+    const carsBad = g.cars.filter(c=>carCheck(g,c).cls==='r').length;
+    return `<tr>
+      <td style="font-size:12px">${g.files.join('<br>')}</td>
+      <td>${g.sender}</td>
+      <td>${g.container!=='—'?`<span class="plate">${g.container}</span>`:'—'}</td>
+      <td style="font-size:12px">${g.city||g.st||'—'}${g.idate?`<div style='font-size:10px;color:var(--ink-2)'>${g.idate}</div>`:''}</td>
+      <td class="num">${R!=null?'$'+fmt(R):'—'}</td>
+      <td class="num">$${fmt(g.oceanSum)}<div style="font-size:10px;color:var(--ink-2)">${g.oceanLines.map(a=>'$'+fmt(a)).join(' + ')}</div></td>
+      <td class="num ${R!=null?(g.oceanSum-R>1?'neg':'pos'):''}">${R!=null?'$'+fmt(g.oceanSum-R):'—'}</td>
+      <td class="num">${g.cars.length} მანქ.${carsBad?` <span class="neg">⚠${carsBad}</span>`:''}${g.others.length?` · <span class="neg">სხვა: ${g.others.length}</span>`:''}</td>
+      <td><span class="pill ${cls}">${txt}</span></td>
+      <td><button class="btn ghost" data-raw="${i}" style="padding:3px 10px;font-size:11px">დეტალები</button></td>
+    </tr><tr id="raw-${i}" style="display:none"><td colspan="10">
+      <table style="margin:6px 0"><thead><tr><th>VIN</th><th class="num">ცხრილის ფასი</th><th class="num">${g.sender==='VS Brothers'?'+ საკომისიო':'Check Fee'}</th><th class="num">ინვოისში ტრანსპ.</th><th class="num">სხვაობა</th><th>სტატუსი</th></tr></thead>
+      <tbody>${g.cars.map(c=>{ const cc=carCheck(g,c);
+        return `<tr><td style="font-family:var(--mono);font-size:11px">${c.vin||'?'}</td>
+        <td class="num">${cc.sheet!=null?'$'+fmt(cc.sheet):'—'}</td>
+        <td class="num">${g.sender==='VS Brothers'?'$'+fmt(commission()):(c.checkFee!=null?'$'+fmt(c.checkFee)+(Math.abs(c.checkFee-commission())>0.5?' ⚠':''):'—')}</td>
+        <td class="num">${c.invTrans!=null?'$'+fmt(c.invTrans):'—'}</td>
+        <td class="num ${cc.diff>0?'neg':(cc.diff===0?'pos':'')}">${cc.diff!=null?'$'+fmt(cc.diff):'—'}</td>
+        <td><span class="pill ${cc.cls}">${cc.txt}</span></td></tr>`;}).join('')}</tbody></table>
+      ${(g.cutLines&&g.cutLines.length)?`<div style="margin:6px 0"><b>დაჭრა (Cut Car):</b> ${g.cutLines.map(x=>`<span class="pill ${!CUT_STATES.includes(g.st)?'a':(Math.abs(x.amt-cutFee())<=1?'g':'r')}" style="margin:2px">✂ ${x.vin?x.vin.slice(-6):''} — $${fmt(x.amt)}</span>`).join(' ')}</div>`:''}
+      ${(g.hybLines&&g.hybLines.length)?`<div style="margin:6px 0"><b>ჰიბრიდი/ელექტრო:</b> ${g.hybLines.map(x=>`<span class="pill ${Math.abs(x.amt-hybRate(g.sender))<=1?'g':'r'}" style="margin:2px">⚡ ${x.vin?x.vin.slice(-6):''} — $${fmt(x.amt)}</span>`).join(' ')}</div>`:''}
+      ${(g.motoLines&&g.motoLines.length)?`<div style="margin:6px 0"><b>მოტოციკლები:</b> ${g.motoLines.map(m=>`<span class="pill ${Math.abs(m.amt-motoRate(g.sender))<=1?'g':'r'}" style="margin:2px">🏍 ${m.vin?m.vin.slice(-6):''} — $${fmt(m.amt)}</span>`).join(' ')}</div>`:''}
+      ${g.others.length?`<div style="margin:6px 0"><b>სხვა ხარჯები (გადაამოწმე):</b> ${g.others.map(o=>`<span class="pill a" style="margin:2px">${o.desc} — $${fmt(o.amt)}${o.vin?' ('+o.vin.slice(-6)+')':''}</span>`).join(' ')}</div>`:''}
+      <div class="rawtxt" id="rawtxt-${i}">${g.texts.join('\n――――\n').slice(0,6000).replace(/</g,'&lt;')}</div>
+      <button class="btn ghost" data-txt="${i}" style="padding:3px 10px;font-size:11px;margin-top:6px">PDF ტექსტი</button>
+    </td></tr>`;
+  }).join('');
+  document.querySelectorAll('[data-raw]').forEach(b=>b.onclick=()=>{ const row=$('raw-'+b.dataset.raw); row.style.display=row.style.display==='none'?'':'none'; });
+  document.querySelectorAll('[data-txt]').forEach(b=>b.onclick=()=>{ const el=$('rawtxt-'+b.dataset.txt); el.style.display=el.style.display==='block'?'none':'block'; });
+}
+function recheck(){ if(RESULTS.length) renderResults(); }
+$('clear-res').onclick=()=>{ RESULTS=[]; $('res-sec').style.display='none'; $('kpis').style.display='none'; };
+$('exp').onclick=()=>{
+  const rows=[['Sender','Container','Origin','Rate','OceanSum','RateDiff','VIN','SheetPrice','InvoiceTransport','Expected','TransDiff','OtherCharges','Status']];
+  RESULTS.forEach(g=>{ const [,txt,R]=verdict(g);
+    const oth = g.others.map(o=>`${o.desc} $${o.amt}`).join('; ');
+    if(!g.cars.length) rows.push([g.sender,g.container,g.city||g.st||'',R??'',g.oceanSum,(R!=null)?g.oceanSum-R:'','','','','','',oth,txt]);
+    g.cars.forEach(c=>{ const cc=carCheck(g,c);
+      rows.push([g.sender,g.container,g.city||g.st||'',R??'',g.oceanSum,(R!=null)?g.oceanSum-R:'',c.vin||'',cc.sheet??'',c.invTrans??'',cc.exp??'',cc.diff??'',oth,txt]); });
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download='invoice-check.csv'; a.click();
+};
+$('save-html').onclick=()=>{
+  document.getElementById('data').textContent = JSON.stringify({rates:RATES, sheetUrl:$('sheet-url').value, commission:commission(), motoVS:parseFloat($('moto-vs').value)||0, motoATL:parseFloat($('moto-atl').value)||0, hybVS:parseFloat($('hyb-vs').value)||0, hybATL:parseFloat($('hyb-atl').value)||0, cutFee:parseFloat($('cut-fee').value)||0, changeVS:$('chg-vs').value||'', changeATL:window.CHG_ATL||''});
+  const src='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([src],{type:'text/html'}));
+  a.download='carspace-invoice-checker-'+new Date().toISOString().slice(0,10)+'.html'; a.click();
+};
+renderRates();
+</script>
+</body>
+</html>
